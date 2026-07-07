@@ -23,6 +23,19 @@ export default async function handler(req) {
   }
   if (!KV_URL || !KV_TOKEN) return json({ error: 'KV non configurato' }, 500);
 
+  if (url.searchParams.get('debug') === '1') {
+    let host = null;
+    try { host = process.env.REDIS_URL ? new URL(process.env.REDIS_URL).hostname : null; } catch (_) {}
+    return json({
+      hasRestUrl: !!process.env.KV_REST_API_URL,
+      hasUpstashUrl: !!process.env.UPSTASH_REDIS_REST_URL,
+      hasRedisUrl: !!process.env.REDIS_URL,
+      redisProtocol: process.env.REDIS_URL ? process.env.REDIS_URL.split(':')[0] : null,
+      derivedRestHost: host,
+      resolvedUrl: KV_URL,
+    });
+  }
+
   const kvKey = 'dw-' + key;
   const call = (cmd) =>
     fetch(KV_URL, {
