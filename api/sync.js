@@ -10,8 +10,8 @@ export default async function handler(req) {
   const key = url.searchParams.get('key');
   if (!key || key.length < 8) return json({ error: 'bad key' }, 400);
 
-  const KV_URL = process.env.KV_REST_API_URL;
-  const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+  const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!KV_URL || !KV_TOKEN) return json({ error: 'KV non configurato' }, 500);
 
   const kvKey = 'dw-' + key;
