@@ -10,8 +10,17 @@ export default async function handler(req) {
   const key = url.searchParams.get('key');
   if (!key || key.length < 8) return json({ error: 'bad key' }, 400);
 
-  const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  let KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  let KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  // Fallback: ricava l'endpoint REST + token dalla connection string REDIS_URL
+  // (Vercel Redis è basato su Upstash: host REST = stesso host su https, token = password).
+  if ((!KV_URL || !KV_TOKEN) && process.env.REDIS_URL) {
+    try {
+      const u = new URL(process.env.REDIS_URL);
+      KV_URL = 'https://' + u.hostname;
+      KV_TOKEN = decodeURIComponent(u.password);
+    } catch (_) {}
+  }
   if (!KV_URL || !KV_TOKEN) return json({ error: 'KV non configurato' }, 500);
 
   const kvKey = 'dw-' + key;
