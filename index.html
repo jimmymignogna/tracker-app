@@ -20,11 +20,20 @@
   }
   h2{font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:28px 0 12px; font-weight:600}
   .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px}
+  .linkbtn{background:none;border:none;color:var(--muted);font-size:12px;display:block;margin:0 auto;cursor:pointer;text-decoration:underline;padding:6px}
 
   /* Mantra */
-  #mantraDisplay{font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.15; text-align:center; padding:28px 8px 6px; word-break:break-word}
-  #mantraDates{text-align:center; color:var(--muted); font-size:13px; margin-bottom:4px}
-  #mantraEdit,.linkbtn{background:none;border:none;color:var(--muted);font-size:12px;display:block;margin:0 auto;cursor:pointer;text-decoration:underline;padding:6px}
+  #mantraWrap{text-align:center; padding:34px 8px 22px; cursor:pointer}
+  .mantra-label{font-size:11px; letter-spacing:.24em; text-transform:uppercase; color:var(--muted); margin-bottom:16px}
+  #mantraDisplay{
+    font-size:clamp(30px,8.5vw,48px); font-weight:800; line-height:1.12; word-break:break-word;
+    background:linear-gradient(120deg,#e8edf2 0%,#7dd3fc 55%,#38bdf8 100%);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  #mantraDisplay.placeholder{
+    -webkit-text-fill-color:var(--muted); background:none; font-weight:600; font-size:20px;
+  }
+  .mantra-hint{font-size:11px; color:var(--muted); margin-top:14px; opacity:.55}
 
   /* Grid */
   .grid{display:grid; grid-template-columns:repeat(20,1fr); gap:3px; margin:12px 0}
@@ -36,10 +45,11 @@
   .bar>div{height:100%; background:linear-gradient(90deg,var(--green),#4ade80); border-radius:6px; transition:width .4s}
   .statline{display:flex; justify-content:space-between; font-size:14px; color:var(--muted); margin-top:8px}
   .statline b{color:var(--text)}
+  #todayEdit{cursor:pointer}
 
   /* DW input */
   .dwrow{display:flex; gap:10px; margin-top:14px}
-  input[type=number], input[type=text], input[type=date]{
+  input[type=number], input[type=text]{
     background:var(--card2); border:1px solid var(--line); color:var(--text);
     border-radius:12px; padding:14px; font-size:17px; width:100%;
   }
@@ -48,17 +58,26 @@
     font-size:17px; font-weight:700; padding:14px 22px; cursor:pointer; white-space:nowrap;
   }
   button.primary:active{transform:scale(.97)}
-  #todayCount{font-size:13px; color:var(--muted); margin-top:10px}
+  #outputDefBox{
+    margin-top:12px; font-size:13px; color:var(--muted); cursor:pointer;
+    padding:11px 13px; background:var(--card2); border:1px dashed var(--line); border-radius:10px;
+    line-height:1.4;
+  }
+  .odef-label{color:var(--text); font-weight:600; margin-right:6px}
+  #outputDef.placeholder{opacity:.7; font-style:italic}
 
   /* Habits */
   .habit{display:flex; align-items:center; justify-content:space-between; padding:14px 4px; border-bottom:1px solid var(--line)}
-  .habit:last-child{border-bottom:none}
-  .habit .name{font-size:16px}
+  .hleft{display:flex; align-items:center; gap:10px; min-width:0}
+  .hdel{background:none; border:none; color:var(--muted); font-size:22px; cursor:pointer; line-height:1; padding:0 6px; flex-shrink:0}
+  .habit .name{font-size:16px; cursor:pointer; word-break:break-word}
   .habit .streak{font-size:12px; color:var(--muted); margin-top:2px}
   .toggle{width:56px; height:32px; border-radius:16px; background:var(--grey); border:1px solid var(--line); position:relative; cursor:pointer; flex-shrink:0; transition:background .2s}
   .toggle::after{content:""; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:var(--muted); transition:all .2s}
   .toggle.on{background:var(--green-dim); border-color:var(--green)}
   .toggle.on::after{left:27px; background:var(--green)}
+  .addhabit{width:100%; margin-top:14px; background:var(--card2); border:1px dashed var(--line); color:var(--muted); border-radius:12px; padding:13px; font-size:14px; cursor:pointer}
+  .addhabit:active{transform:scale(.99)}
 
   /* Analytics */
   .stats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
@@ -81,17 +100,10 @@
 <body>
 
 <!-- MANTRA -->
-<div id="mantraSetup" class="card hidden">
-  <h2 style="margin-top:0">Imposta il mantra</h2>
-  <div class="field"><label>Mantra del trimestre</label><input type="text" id="mIn" placeholder="#librominimalismo"></div>
-  <div class="field"><label>Inizio</label><input type="date" id="mStart"></div>
-  <div class="field"><label>Fine</label><input type="date" id="mEnd"></div>
-  <button class="primary" style="width:100%" onclick="saveMantra()">Salva mantra</button>
-</div>
-<div id="mantraView" class="hidden">
+<div id="mantraWrap" onclick="editMantra()">
+  <div class="mantra-label">Mantra del trimestre</div>
   <div id="mantraDisplay"></div>
-  <div id="mantraDates"></div>
-  <button id="mantraEdit" onclick="editMantra()">modifica</button>
+  <div class="mantra-hint">tocca per modificare</div>
 </div>
 
 <!-- DEEP WORK -->
@@ -100,12 +112,14 @@
   <div class="grid" id="grid"></div>
   <div class="bar"><div id="barFill" style="width:0%"></div></div>
   <div class="statline"><span><b id="dwTotal">0</b>/200 DW outputs</span><span><b id="dwPct">0%</b></span></div>
-  <div class="statline"><span>🔥 Streak: <b id="dwStreak">0</b> giorni</span><span>Oggi: <b id="dwToday">0</b></span></div>
+  <div class="statline"><span>🔥 Streak: <b id="dwStreak">0</b> giorni</span><span id="todayEdit" onclick="editToday()">Oggi: <b id="dwToday">0</b> ✎</span></div>
   <div class="dwrow">
     <input type="number" id="dwIn" inputmode="numeric" placeholder="Quanti DW output oggi?">
     <button class="primary" onclick="addDW()">Aggiungi</button>
   </div>
-  <div id="todayCount">Puoi inserire anche un numero negativo per correggere.</div>
+  <div id="outputDefBox" onclick="editOutputDef()">
+    <span class="odef-label">Un output =</span><span id="outputDef"></span>
+  </div>
 </div>
 
 <!-- HABITS -->
@@ -160,19 +174,32 @@
 
 <script>
 const KEY='dwTracker.v1';
-const HABITS=[
+const DEFAULT_HABITS=[
   {id:'steps', name:'≥ 12k passi'},
   {id:'read',  name:'Lettura 30′'},
   {id:'stoic', name:'Daily Stoic'},
   {id:'plank', name:'Plank'},
-  {id:'custom',name:null}, // nome custom
 ];
 const GOAL=200, MILESTONES=[50,100,150,200];
 
 let S = load();
 function load(){
-  try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s) return s; }catch(e){}
-  return { mantra:null, dwLog:{}, habitLog:{}, customName:'Custom', seenMilestones:[], nextMantra:'', mod:{} };
+  let s;
+  try{ s=JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  s = s || {};
+  // migrazione: mantra da {text,start,end} -> stringa
+  if(s.mantra && typeof s.mantra==='object') s.mantra = s.mantra.text || '';
+  if(typeof s.mantra!=='string') s.mantra='';
+  // migrazione: habits hardcoded + customName -> array editabile
+  if(!Array.isArray(s.habits)){
+    s.habits = DEFAULT_HABITS.map(h=>({...h}));
+    if(s.customName) s.habits.push({id:'custom', name:s.customName});
+  }
+  s.dwLog=s.dwLog||{}; s.habitLog=s.habitLog||{};
+  s.seenMilestones=s.seenMilestones||[]; s.mod=s.mod||{};
+  if(typeof s.outputDef!=='string') s.outputDef='';
+  if(typeof s.nextMantra!=='string') s.nextMantra='';
+  return s;
 }
 function save(touchedKeys){
   S.mod=S.mod||{};
@@ -184,31 +211,28 @@ function save(touchedKeys){
 const today=()=>new Date().toISOString().slice(0,10);
 const dayBefore=d=>{const x=new Date(d+'T12:00:00');x.setDate(x.getDate()-1);return x.toISOString().slice(0,10);};
 const total=()=>Object.values(S.dwLog).reduce((a,b)=>a+b,0);
-const fmtDate=d=>new Date(d+'T12:00:00').toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- Mantra ---------- */
 function renderMantra(){
-  const setup=document.getElementById('mantraSetup'), view=document.getElementById('mantraView');
-  if(S.mantra){
-    setup.classList.add('hidden'); view.classList.remove('hidden');
-    document.getElementById('mantraDisplay').textContent=S.mantra.text;
-    document.getElementById('mantraDates').textContent=fmtDate(S.mantra.start)+' → '+fmtDate(S.mantra.end);
-  }else{
-    setup.classList.remove('hidden'); view.classList.add('hidden');
-    document.getElementById('mStart').value=today();
-  }
-}
-function saveMantra(){
-  const t=document.getElementById('mIn').value.trim();
-  if(!t) return;
-  S.mantra={text:t, start:document.getElementById('mStart').value||today(), end:document.getElementById('mEnd').value||today()};
-  save(['mantra']); renderMantra();
+  const el=document.getElementById('mantraDisplay');
+  el.textContent = S.mantra || 'Imposta il tuo mantra';
+  el.classList.toggle('placeholder', !S.mantra);
 }
 function editMantra(){
-  document.getElementById('mIn').value=S.mantra.text;
-  document.getElementById('mStart').value=S.mantra.start;
-  document.getElementById('mEnd').value=S.mantra.end;
-  S.mantra=null; renderMantra();
+  const v=prompt('Il tuo mantra del trimestre:', S.mantra||'');
+  if(v!==null){ S.mantra=v.trim(); save(['mantra']); renderMantra(); }
+}
+
+/* ---------- Output definition ---------- */
+function renderOutputDef(){
+  const el=document.getElementById('outputDef');
+  el.textContent = S.outputDef || 'tocca per definire cos’è un output…';
+  el.classList.toggle('placeholder', !S.outputDef);
+}
+function editOutputDef(){
+  const v=prompt('Un output di Deep Work =', S.outputDef||'');
+  if(v!==null){ S.outputDef=v.trim(); save(['outputDef']); renderOutputDef(); }
 }
 
 /* ---------- Grid + DW ---------- */
@@ -252,6 +276,17 @@ function addDW(){
   renderGrid(n>0?before:null);
   checkMilestones();
 }
+function editToday(){
+  const t=today(), cur=S.dwLog[t]||0;
+  const v=prompt('Output di OGGI (numero esatto):', cur);
+  if(v===null) return;
+  const n=Math.max(0,parseInt(v,10)||0);
+  const before=Math.min(total(),GOAL);
+  if(n===0) delete S.dwLog[t]; else S.dwLog[t]=n;
+  save(['dw:'+t]);
+  renderGrid(n>cur?before:null);
+  checkMilestones();
+}
 function checkMilestones(){
   const t=total();
   for(const m of MILESTONES){
@@ -278,7 +313,6 @@ function closeModal(){
 }
 
 /* ---------- Habits ---------- */
-function habitName(h){ return h.id==='custom' ? S.customName : h.name; }
 function habitStreak(id){
   let d=today(), n=0;
   const done=x=>S.habitLog[x]&&S.habitLog[x][id];
@@ -289,22 +323,24 @@ function habitStreak(id){
 function renderHabits(){
   const box=document.getElementById('habits'); box.innerHTML='';
   const t=today();
-  HABITS.forEach(h=>{
+  S.habits.forEach(h=>{
     const on=S.habitLog[t]&&S.habitLog[t][h.id];
-    const row=document.createElement('div'); row.className='habit';
     const st=habitStreak(h.id);
-    row.innerHTML=`<div><div class="name">${habitName(h)}</div><div class="streak">${st>0?'🔥 '+st+' giorni':'—'}</div></div>
-      <div class="toggle${on?' on':''}" role="switch" aria-checked="${!!on}" data-id="${h.id}"></div>`;
+    const row=document.createElement('div'); row.className='habit';
+    row.innerHTML=`<div class="hleft">
+        <button class="hdel" title="Rimuovi">×</button>
+        <div><div class="name">${esc(h.name)}</div><div class="streak">${st>0?'🔥 '+st+' giorni':'—'}</div></div>
+      </div>
+      <div class="toggle${on?' on':''}" role="switch" aria-checked="${!!on}" data-id="${esc(h.id)}"></div>`;
     row.querySelector('.toggle').onclick=()=>toggleHabit(h.id);
-    if(h.id==='custom'){
-      row.querySelector('.name').style.cursor='pointer';
-      row.querySelector('.name').onclick=()=>{
-        const v=prompt('Nome abitudine custom:', S.customName);
-        if(v){ S.customName=v.trim(); save(['customName']); renderHabits(); }
-      };
-    }
+    row.querySelector('.name').onclick=()=>renameHabit(h.id);
+    row.querySelector('.hdel').onclick=()=>removeHabit(h.id);
     box.appendChild(row);
   });
+  const add=document.createElement('button');
+  add.className='addhabit'; add.textContent='+ Aggiungi abitudine';
+  add.onclick=addHabit;
+  box.appendChild(add);
   renderCompliance();
 }
 function toggleHabit(id){
@@ -313,16 +349,35 @@ function toggleHabit(id){
   S.habitLog[t][id]=!S.habitLog[t][id];
   save(['hb:'+t]); renderHabits();
 }
+function renameHabit(id){
+  const h=S.habits.find(x=>x.id===id); if(!h) return;
+  const v=prompt('Nome abitudine:', h.name);
+  if(v && v.trim()){ h.name=v.trim(); save(['habits']); renderHabits(); }
+}
+function removeHabit(id){
+  const h=S.habits.find(x=>x.id===id); if(!h) return;
+  if(!confirm('Rimuovere "'+h.name+'"?')) return;
+  S.habits=S.habits.filter(x=>x.id!==id);
+  save(['habits']); renderHabits();
+}
+function addHabit(){
+  const v=prompt('Nuova abitudine:');
+  if(v && v.trim()){
+    const id='h'+Date.now().toString(36)+Math.floor(Math.random()*46656).toString(36);
+    S.habits.push({id, name:v.trim()});
+    save(['habits']); renderHabits();
+  }
+}
 function renderCompliance(){
   let done=0, tot=0, d=today();
   for(let i=0;i<7;i++){
-    HABITS.forEach(h=>{ tot++; if(S.habitLog[d]&&S.habitLog[d][h.id]) done++; });
+    S.habits.forEach(h=>{ tot++; if(S.habitLog[d]&&S.habitLog[d][h.id]) done++; });
     d=dayBefore(d);
   }
-  document.getElementById('sHab').textContent=Math.round(done/tot*100)+'%';
+  document.getElementById('sHab').textContent = tot ? Math.round(done/tot*100)+'%' : '–';
 }
 
-/* ---------- Sync (Vercel KV via Edge Function, chiave segreta condivisa) ---------- */
+/* ---------- Sync (Vercel Redis via Function, chiave segreta condivisa) ---------- */
 const SYNC_KEY='dwTracker.syncKey';
 let pushTimer=null;
 const syncKey=()=>localStorage.getItem(SYNC_KEY);
@@ -368,7 +423,8 @@ function mergeRemote(R){
       const d=k.slice(3);
       S.habitLog[d]=R.habitLog[d]||{};
     }else if(k==='mantra') S.mantra=R.mantra;
-    else if(k==='customName') S.customName=R.customName;
+    else if(k==='outputDef') S.outputDef=R.outputDef;
+    else if(k==='habits') S.habits=Array.isArray(R.habits)?R.habits:S.habits;
     else if(k==='nextMantra') S.nextMantra=R.nextMantra;
     else if(k==='ms') S.seenMilestones=R.seenMilestones||[];
     S.mod[k]=R.mod[k];
@@ -384,7 +440,7 @@ async function doSync(){
     localStorage.setItem(KEY,JSON.stringify(S));
     const w=await fetch(syncURL(),{method:'POST',body:JSON.stringify(S)});
     if(!w.ok) throw new Error('write '+w.status);
-    renderMantra(); renderGrid(); renderHabits();
+    renderAll();
     setSyncStatus('ok','Sincronizzato · '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}));
   }catch(e){
     setSyncStatus('err','Offline — riprovo alla prossima modifica');
@@ -397,8 +453,9 @@ function schedulePush(){
 }
 
 /* ---------- init ---------- */
+function renderAll(){ renderMantra(); renderOutputDef(); renderGrid(); renderHabits(); }
 document.getElementById('dwIn').addEventListener('keydown',e=>{if(e.key==='Enter')addDW();});
-buildGrid(); renderMantra(); renderGrid(); renderHabits(); renderSync(); doSync();
+buildGrid(); renderAll(); renderSync(); doSync();
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) doSync(); });
 </script>
 </body>
