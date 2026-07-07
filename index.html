@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>Mantra · Deep Work Tracker</title>
+<style>
+  :root{
+    --bg:#0b0f14; --card:#121820; --card2:#0f141b; --line:#1e2733;
+    --text:#e8edf2; --muted:#7d8b9b; --green:#22c55e; --green-dim:#14532d;
+    --gold:#f5b942; --grey:#1c2530; --accent:#38bdf8;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Segoe UI,Roboto,sans-serif;
+    padding:20px 16px calc(40px + env(safe-area-inset-bottom));
+    max-width:560px; margin-inline:auto;
+  }
+  h2{font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:28px 0 12px; font-weight:600}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px}
+
+  /* Mantra */
+  #mantraDisplay{font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.15; text-align:center; padding:28px 8px 6px; word-break:break-word}
+  #mantraDates{text-align:center; color:var(--muted); font-size:13px; margin-bottom:4px}
+  #mantraEdit,.linkbtn{background:none;border:none;color:var(--muted);font-size:12px;display:block;margin:0 auto;cursor:pointer;text-decoration:underline;padding:6px}
+
+  /* Grid */
+  .grid{display:grid; grid-template-columns:repeat(20,1fr); gap:3px; margin:12px 0}
+  .cell{aspect-ratio:1; border-radius:3px; background:var(--grey); transition:background .3s, transform .3s}
+  .cell.on{background:var(--green)}
+  .cell.gold{background:var(--gold); box-shadow:0 0 6px rgba(245,185,66,.5)}
+  .cell.pop{transform:scale(1.35)}
+  .bar{height:10px; background:var(--grey); border-radius:6px; overflow:hidden; margin-top:6px}
+  .bar>div{height:100%; background:linear-gradient(90deg,var(--green),#4ade80); border-radius:6px; transition:width .4s}
+  .statline{display:flex; justify-content:space-between; font-size:14px; color:var(--muted); margin-top:8px}
+  .statline b{color:var(--text)}
+
+  /* DW input */
+  .dwrow{display:flex; gap:10px; margin-top:14px}
+  input[type=number], input[type=text], input[type=date]{
+    background:var(--card2); border:1px solid var(--line); color:var(--text);
+    border-radius:12px; padding:14px; font-size:17px; width:100%;
+  }
+  button.primary{
+    background:var(--green); color:#04120a; border:none; border-radius:12px;
+    font-size:17px; font-weight:700; padding:14px 22px; cursor:pointer; white-space:nowrap;
+  }
+  button.primary:active{transform:scale(.97)}
+  #todayCount{font-size:13px; color:var(--muted); margin-top:10px}
+
+  /* Habits */
+  .habit{display:flex; align-items:center; justify-content:space-between; padding:14px 4px; border-bottom:1px solid var(--line)}
+  .habit:last-child{border-bottom:none}
+  .habit .name{font-size:16px}
+  .habit .streak{font-size:12px; color:var(--muted); margin-top:2px}
+  .toggle{width:56px; height:32px; border-radius:16px; background:var(--grey); border:1px solid var(--line); position:relative; cursor:pointer; flex-shrink:0; transition:background .2s}
+  .toggle::after{content:""; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:var(--muted); transition:all .2s}
+  .toggle.on{background:var(--green-dim); border-color:var(--green)}
+  .toggle.on::after{left:27px; background:var(--green)}
+
+  /* Analytics */
+  .stats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
+  .stat{background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:12px; text-align:center}
+  .stat .v{font-size:22px; font-weight:800}
+  .stat .l{font-size:11px; color:var(--muted); margin-top:2px}
+
+  /* Modal */
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:center; justify-content:center; padding:24px; z-index:10}
+  .overlay.show{display:flex}
+  .modal{background:var(--card); border:1px solid var(--gold); border-radius:20px; padding:28px; text-align:center; max-width:340px; width:100%}
+  .modal .badge{font-size:56px}
+  .modal h3{margin:10px 0 6px; font-size:22px}
+  .modal p{color:var(--muted); font-size:14px; margin:0 0 18px}
+  .field{margin-bottom:12px; text-align:left}
+  .field label{font-size:12px; color:var(--muted); display:block; margin-bottom:6px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+
+<!-- MANTRA -->
+<div id="mantraSetup" class="card hidden">
+  <h2 style="margin-top:0">Imposta il mantra</h2>
+  <div class="field"><label>Mantra del trimestre</label><input type="text" id="mIn" placeholder="#librominimalismo"></div>
+  <div class="field"><label>Inizio</label><input type="date" id="mStart"></div>
+  <div class="field"><label>Fine</label><input type="date" id="mEnd"></div>
+  <button class="primary" style="width:100%" onclick="saveMantra()">Salva mantra</button>
+</div>
+<div id="mantraView" class="hidden">
+  <div id="mantraDisplay"></div>
+  <div id="mantraDates"></div>
+  <button id="mantraEdit" onclick="editMantra()">modifica</button>
+</div>
+
+<!-- DEEP WORK -->
+<h2>Deep Work · La Stella Polare</h2>
+<div class="card">
+  <div class="grid" id="grid"></div>
+  <div class="bar"><div id="barFill" style="width:0%"></div></div>
+  <div class="statline"><span><b id="dwTotal">0</b>/200 DW outputs</span><span><b id="dwPct">0%</b></span></div>
+  <div class="statline"><span>🔥 Streak: <b id="dwStreak">0</b> giorni</span><span>Oggi: <b id="dwToday">0</b></span></div>
+  <div class="dwrow">
+    <input type="number" id="dwIn" inputmode="numeric" placeholder="Quanti DW output oggi?">
+    <button class="primary" onclick="addDW()">Aggiungi</button>
+  </div>
+  <div id="todayCount">Puoi inserire anche un numero negativo per correggere.</div>
+</div>
+
+<!-- HABITS -->
+<h2>Abitudini di oggi</h2>
+<div class="card" id="habits"></div>
+
+<!-- ANALYTICS -->
+<h2>Essenziali</h2>
+<div class="stats">
+  <div class="stat"><div class="v" id="sPct">0%</div><div class="l">verso 200 DW</div></div>
+  <div class="stat"><div class="v" id="sHab">–</div><div class="l">habits 7gg</div></div>
+  <div class="stat"><div class="v" id="sStreak">0</div><div class="l">DW streak</div></div>
+</div>
+
+<!-- SYNC -->
+<h2>Sync tra dispositivi</h2>
+<div class="card">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <span id="syncDot" style="width:10px;height:10px;border-radius:50%;background:var(--muted);flex-shrink:0"></span>
+    <span id="syncStatus" style="font-size:14px;color:var(--muted)">Sync non attivo</span>
+  </div>
+  <div id="syncOff">
+    <button class="primary" style="width:100%" onclick="enableSync()">Attiva sync</button>
+    <div style="font-size:12px;color:var(--muted);margin-top:10px">Genera una chiave segreta. Sull'altro dispositivo, incollala qui sotto invece di generarla.</div>
+    <div class="dwrow" style="margin-top:10px">
+      <input type="text" id="syncKeyIn" placeholder="…oppure incolla la chiave" autocapitalize="off" autocomplete="off">
+      <button class="primary" onclick="joinSync()">Collega</button>
+    </div>
+  </div>
+  <div id="syncOn" class="hidden">
+    <div style="font-size:12px;color:var(--muted)">La tua chiave (incollala sull'altro dispositivo):</div>
+    <div class="dwrow" style="margin-top:8px">
+      <input type="text" id="syncKeyOut" readonly onclick="this.select()">
+      <button class="primary" onclick="copyKey(this)">Copia</button>
+    </div>
+    <button class="linkbtn" style="margin-top:10px" onclick="disableSync()">disattiva sync</button>
+  </div>
+</div>
+
+<!-- MILESTONE MODAL -->
+<div class="overlay" id="msOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="badge" id="msBadge">🏅</div>
+    <h3 id="msTitle"></h3>
+    <p id="msText"></p>
+    <div id="nextMantraForm" class="hidden">
+      <div class="field"><label>Prossimo mantra</label><input type="text" id="nmIn" placeholder="Il prossimo focus…"></div>
+    </div>
+    <button class="primary" style="width:100%" onclick="closeModal()">Continua</button>
+  </div>
+</div>
+
+<script>
+const KEY='dwTracker.v1';
+const HABITS=[
+  {id:'steps', name:'≥ 12k passi'},
+  {id:'read',  name:'Lettura 30′'},
+  {id:'stoic', name:'Daily Stoic'},
+  {id:'plank', name:'Plank'},
+  {id:'custom',name:null}, // nome custom
+];
+const GOAL=200, MILESTONES=[50,100,150,200];
+
+let S = load();
+function load(){
+  try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s) return s; }catch(e){}
+  return { mantra:null, dwLog:{}, habitLog:{}, customName:'Custom', seenMilestones:[], nextMantra:'', mod:{} };
+}
+function save(touchedKeys){
+  S.mod=S.mod||{};
+  (touchedKeys||[]).forEach(k=>S.mod[k]=Date.now());
+  localStorage.setItem(KEY, JSON.stringify(S));
+  schedulePush();
+}
+
+const today=()=>new Date().toISOString().slice(0,10);
+const dayBefore=d=>{const x=new Date(d+'T12:00:00');x.setDate(x.getDate()-1);return x.toISOString().slice(0,10);};
+const total=()=>Object.values(S.dwLog).reduce((a,b)=>a+b,0);
+const fmtDate=d=>new Date(d+'T12:00:00').toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+
+/* ---------- Mantra ---------- */
+function renderMantra(){
+  const setup=document.getElementById('mantraSetup'), view=document.getElementById('mantraView');
+  if(S.mantra){
+    setup.classList.add('hidden'); view.classList.remove('hidden');
+    document.getElementById('mantraDisplay').textContent=S.mantra.text;
+    document.getElementById('mantraDates').textContent=fmtDate(S.mantra.start)+' → '+fmtDate(S.mantra.end);
+  }else{
+    setup.classList.remove('hidden'); view.classList.add('hidden');
+    document.getElementById('mStart').value=today();
+  }
+}
+function saveMantra(){
+  const t=document.getElementById('mIn').value.trim();
+  if(!t) return;
+  S.mantra={text:t, start:document.getElementById('mStart').value||today(), end:document.getElementById('mEnd').value||today()};
+  save(['mantra']); renderMantra();
+}
+function editMantra(){
+  document.getElementById('mIn').value=S.mantra.text;
+  document.getElementById('mStart').value=S.mantra.start;
+  document.getElementById('mEnd').value=S.mantra.end;
+  S.mantra=null; renderMantra();
+}
+
+/* ---------- Grid + DW ---------- */
+function buildGrid(){
+  const g=document.getElementById('grid'); g.innerHTML='';
+  for(let i=0;i<GOAL;i++){const c=document.createElement('div');c.className='cell';g.appendChild(c);}
+}
+function renderGrid(animateFrom=null){
+  const t=Math.min(total(),GOAL);
+  document.querySelectorAll('.cell').forEach((c,i)=>{
+    const n=i+1, on=n<=t;
+    c.className='cell'+(on?(MILESTONES.includes(n)?' gold':' on'):'');
+    if(animateFrom!==null && on && n>animateFrom){
+      c.classList.add('pop'); setTimeout(()=>c.classList.remove('pop'), 300+(n-animateFrom)*60);
+    }
+  });
+  const tt=total();
+  document.getElementById('dwTotal').textContent=tt;
+  document.getElementById('dwPct').textContent=(tt/GOAL*100).toFixed(1).replace(/\.0$/,'')+'%';
+  document.getElementById('barFill').style.width=Math.min(tt/GOAL*100,100)+'%';
+  document.getElementById('dwToday').textContent=S.dwLog[today()]||0;
+  document.getElementById('dwStreak').textContent=dwStreak();
+  document.getElementById('sPct').textContent=Math.round(tt/GOAL*100)+'%';
+  document.getElementById('sStreak').textContent=dwStreak();
+}
+function dwStreak(){
+  let d=today(), n=0;
+  if(!(S.dwLog[d]>0)) d=dayBefore(d); // il giorno corrente non rompe lo streak se non hai ancora loggato
+  while(S.dwLog[d]>0){n++; d=dayBefore(d);}
+  return n;
+}
+function addDW(){
+  const inp=document.getElementById('dwIn');
+  const n=parseInt(inp.value,10);
+  if(!n) return;
+  const before=Math.min(total(),GOAL);
+  const t=today();
+  S.dwLog[t]=Math.max(0,(S.dwLog[t]||0)+n);
+  if(S.dwLog[t]===0) delete S.dwLog[t];
+  save(['dw:'+t]); inp.value='';
+  renderGrid(n>0?before:null);
+  checkMilestones();
+}
+function checkMilestones(){
+  const t=total();
+  for(const m of MILESTONES){
+    if(t>=m && !S.seenMilestones.includes(m)){
+      S.seenMilestones.push(m); save(['ms']); showMilestone(m); return;
+    }
+  }
+}
+function showMilestone(m){
+  const badges={50:'🥉',100:'🥈',150:'🥇',200:'🏆'};
+  document.getElementById('msBadge').textContent=badges[m];
+  document.getElementById('msTitle').textContent=m+' Deep Work outputs!';
+  const final=m===GOAL;
+  document.getElementById('msText').textContent=final
+    ? 'Trimestre completato. Imposta il prossimo mantra 👇'
+    : 'Milestone sbloccata. Avanti così.';
+  document.getElementById('nextMantraForm').classList.toggle('hidden',!final);
+  document.getElementById('msOverlay').classList.add('show');
+}
+function closeModal(){
+  const nm=document.getElementById('nmIn').value.trim();
+  if(nm){ S.nextMantra=nm; save(['nextMantra']); }
+  document.getElementById('msOverlay').classList.remove('show');
+}
+
+/* ---------- Habits ---------- */
+function habitName(h){ return h.id==='custom' ? S.customName : h.name; }
+function habitStreak(id){
+  let d=today(), n=0;
+  const done=x=>S.habitLog[x]&&S.habitLog[x][id];
+  if(!done(d)) d=dayBefore(d);
+  while(done(d)){n++; d=dayBefore(d);}
+  return n;
+}
+function renderHabits(){
+  const box=document.getElementById('habits'); box.innerHTML='';
+  const t=today();
+  HABITS.forEach(h=>{
+    const on=S.habitLog[t]&&S.habitLog[t][h.id];
+    const row=document.createElement('div'); row.className='habit';
+    const st=habitStreak(h.id);
+    row.innerHTML=`<div><div class="name">${habitName(h)}</div><div class="streak">${st>0?'🔥 '+st+' giorni':'—'}</div></div>
+      <div class="toggle${on?' on':''}" role="switch" aria-checked="${!!on}" data-id="${h.id}"></div>`;
+    row.querySelector('.toggle').onclick=()=>toggleHabit(h.id);
+    if(h.id==='custom'){
+      row.querySelector('.name').style.cursor='pointer';
+      row.querySelector('.name').onclick=()=>{
+        const v=prompt('Nome abitudine custom:', S.customName);
+        if(v){ S.customName=v.trim(); save(['customName']); renderHabits(); }
+      };
+    }
+    box.appendChild(row);
+  });
+  renderCompliance();
+}
+function toggleHabit(id){
+  const t=today();
+  S.habitLog[t]=S.habitLog[t]||{};
+  S.habitLog[t][id]=!S.habitLog[t][id];
+  save(['hb:'+t]); renderHabits();
+}
+function renderCompliance(){
+  let done=0, tot=0, d=today();
+  for(let i=0;i<7;i++){
+    HABITS.forEach(h=>{ tot++; if(S.habitLog[d]&&S.habitLog[d][h.id]) done++; });
+    d=dayBefore(d);
+  }
+  document.getElementById('sHab').textContent=Math.round(done/tot*100)+'%';
+}
+
+/* ---------- Sync (Vercel KV via Edge Function, chiave segreta condivisa) ---------- */
+const SYNC_KEY='dwTracker.syncKey';
+let pushTimer=null;
+const syncKey=()=>localStorage.getItem(SYNC_KEY);
+const syncURL=()=>`/api/sync?key=${syncKey()}`;
+
+function setSyncStatus(state,msg){
+  const dot=document.getElementById('syncDot');
+  dot.style.background=state==='ok'?'var(--green)':state==='err'?'#ef4444':'var(--muted)';
+  document.getElementById('syncStatus').textContent=msg;
+}
+function renderSync(){
+  const on=!!syncKey();
+  document.getElementById('syncOff').classList.toggle('hidden',on);
+  document.getElementById('syncOn').classList.toggle('hidden',!on);
+  if(on){ document.getElementById('syncKeyOut').value=syncKey(); }
+  else setSyncStatus('off','Sync non attivo');
+}
+function enableSync(){
+  const k=Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>'abcdefghijklmnopqrstuvwxyz0123456789'[b%36]).join('');
+  localStorage.setItem(SYNC_KEY,k); renderSync(); doSync();
+}
+function joinSync(){
+  const k=document.getElementById('syncKeyIn').value.trim();
+  if(!k) return;
+  localStorage.setItem(SYNC_KEY,k); renderSync(); doSync();
+}
+function disableSync(){ localStorage.removeItem(SYNC_KEY); renderSync(); }
+function copyKey(btn){
+  navigator.clipboard.writeText(syncKey()).then(()=>{btn.textContent='Copiata ✓'; setTimeout(()=>btn.textContent='Copia',1500);});
+}
+
+function mergeRemote(R){
+  if(!R||typeof R!=='object') return;
+  R.mod=R.mod||{}; S.mod=S.mod||{};
+  const newer=k=>(R.mod[k]||0)>(S.mod[k]||0);
+  const allKeys=new Set([...Object.keys(R.mod),...Object.keys(S.mod)]);
+  allKeys.forEach(k=>{
+    if(!newer(k)) return;
+    if(k.startsWith('dw:')){
+      const d=k.slice(3);
+      if(R.dwLog[d]==null) delete S.dwLog[d]; else S.dwLog[d]=R.dwLog[d];
+    }else if(k.startsWith('hb:')){
+      const d=k.slice(3);
+      S.habitLog[d]=R.habitLog[d]||{};
+    }else if(k==='mantra') S.mantra=R.mantra;
+    else if(k==='customName') S.customName=R.customName;
+    else if(k==='nextMantra') S.nextMantra=R.nextMantra;
+    else if(k==='ms') S.seenMilestones=R.seenMilestones||[];
+    S.mod[k]=R.mod[k];
+  });
+}
+async function doSync(){
+  if(!syncKey()) return;
+  setSyncStatus('off','Sincronizzo…');
+  try{
+    const res=await fetch(syncURL());
+    if(res.ok){ mergeRemote(await res.json()); }
+    else if(res.status!==404) throw new Error('read '+res.status);
+    localStorage.setItem(KEY,JSON.stringify(S));
+    const w=await fetch(syncURL(),{method:'POST',body:JSON.stringify(S)});
+    if(!w.ok) throw new Error('write '+w.status);
+    renderMantra(); renderGrid(); renderHabits();
+    setSyncStatus('ok','Sincronizzato · '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}));
+  }catch(e){
+    setSyncStatus('err','Offline — riprovo alla prossima modifica');
+  }
+}
+function schedulePush(){
+  if(!syncKey()) return;
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(doSync,1500);
+}
+
+/* ---------- init ---------- */
+document.getElementById('dwIn').addEventListener('keydown',e=>{if(e.key==='Enter')addDW();});
+buildGrid(); renderMantra(); renderGrid(); renderHabits(); renderSync(); doSync();
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) doSync(); });
+</script>
+</body>
+</html>
