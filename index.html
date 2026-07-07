@@ -456,7 +456,10 @@ function schedulePush(){
 function renderAll(){ renderMantra(); renderOutputDef(); renderGrid(); renderHabits(); }
 document.getElementById('dwIn').addEventListener('keydown',e=>{if(e.key==='Enter')addDW();});
 buildGrid(); renderAll(); renderSync(); doSync();
+// Ri-legge le modifiche fatte da altri dispositivi: al ritorno in primo piano + polling periodico
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) doSync(); });
+window.addEventListener('focus', doSync);
+setInterval(()=>{ if(!document.hidden) doSync(); }, 20000);
 </script>
 </body>
 </html>
