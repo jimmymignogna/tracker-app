@@ -78,6 +78,11 @@
   .toggle.on::after{left:27px; background:var(--green)}
   .addhabit{width:100%; margin-top:14px; background:var(--card2); border:1px dashed var(--line); color:var(--muted); border-radius:12px; padding:13px; font-size:14px; cursor:pointer}
   .addhabit:active{transform:scale(.99)}
+  .daynav{display:flex; align-items:center; justify-content:space-between; padding:2px 2px 12px; border-bottom:1px solid var(--line); margin-bottom:4px}
+  .daynav .dlabel{font-size:15px; font-weight:600; text-transform:capitalize}
+  .daynav .dlabel .oggi{color:var(--green); font-weight:700}
+  .dnav{background:var(--card2); border:1px solid var(--line); color:var(--text); width:42px; height:38px; border-radius:10px; font-size:22px; line-height:1; cursor:pointer}
+  .dnav:disabled{opacity:.3; cursor:default}
 
   /* Analytics */
   .stats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
@@ -103,7 +108,6 @@
 <div id="mantraWrap" onclick="editMantra()">
   <div class="mantra-label">Mantra del trimestre</div>
   <div id="mantraDisplay"></div>
-  <div class="mantra-hint">tocca per modificare</div>
 </div>
 
 <!-- DEEP WORK -->
@@ -123,7 +127,7 @@
 </div>
 
 <!-- HABITS -->
-<h2>Abitudini di oggi</h2>
+<h2>Abitudini</h2>
 <div class="card" id="habits"></div>
 
 <!-- ANALYTICS -->
@@ -210,6 +214,8 @@ function save(touchedKeys){
 
 const today=()=>new Date().toISOString().slice(0,10);
 const dayBefore=d=>{const x=new Date(d+'T12:00:00');x.setDate(x.getDate()-1);return x.toISOString().slice(0,10);};
+const dayLabel=d=>new Date(d+'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});
+let viewDate=today();
 const total=()=>Object.values(S.dwLog).reduce((a,b)=>a+b,0);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -313,19 +319,32 @@ function closeModal(){
 }
 
 /* ---------- Habits ---------- */
-function habitStreak(id){
-  let d=today(), n=0;
+function habitStreak(id, from){
+  let d=from||today(), n=0;
   const done=x=>S.habitLog[x]&&S.habitLog[x][id];
-  if(!done(d)) d=dayBefore(d);
+  if(!done(d)){ if(d===today()) d=dayBefore(d); else return 0; }
   while(done(d)){n++; d=dayBefore(d);}
   return n;
 }
+function shiftDay(delta){
+  const x=new Date(viewDate+'T12:00:00'); x.setDate(x.getDate()+delta);
+  const nd=x.toISOString().slice(0,10);
+  if(nd>today()) return; // niente futuro
+  viewDate=nd; renderHabits();
+}
 function renderHabits(){
   const box=document.getElementById('habits'); box.innerHTML='';
-  const t=today();
+  const t=viewDate, isToday=viewDate===today();
+  const nav=document.createElement('div'); nav.className='daynav';
+  nav.innerHTML=`<button class="dnav" id="dPrev" title="Giorno precedente">‹</button>
+    <div class="dlabel">${dayLabel(viewDate)}${isToday?' <span class="oggi">· oggi</span>':''}</div>
+    <button class="dnav" id="dNext" title="Giorno successivo" ${isToday?'disabled':''}>›</button>`;
+  box.appendChild(nav);
+  nav.querySelector('#dPrev').onclick=()=>shiftDay(-1);
+  const nx=nav.querySelector('#dNext'); if(!isToday) nx.onclick=()=>shiftDay(1);
   S.habits.forEach(h=>{
     const on=S.habitLog[t]&&S.habitLog[t][h.id];
-    const st=habitStreak(h.id);
+    const st=habitStreak(h.id, viewDate);
     const row=document.createElement('div'); row.className='habit';
     row.innerHTML=`<div class="hleft">
         <button class="hdel" title="Rimuovi">×</button>
@@ -344,7 +363,7 @@ function renderHabits(){
   renderCompliance();
 }
 function toggleHabit(id){
-  const t=today();
+  const t=viewDate;
   S.habitLog[t]=S.habitLog[t]||{};
   S.habitLog[t][id]=!S.habitLog[t][id];
   save(['hb:'+t]); renderHabits();
