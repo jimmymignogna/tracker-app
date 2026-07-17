@@ -34,6 +34,8 @@
     -webkit-text-fill-color:var(--muted); background:none; font-weight:600; font-size:20px;
   }
   .mantra-hint{font-size:11px; color:var(--muted); margin-top:14px; opacity:.55}
+  #mantraCountdown{font-size:13px; color:var(--muted); margin-top:14px; letter-spacing:.02em}
+  #mantraCountdown b{color:var(--accent); font-weight:700}
 
   /* Grid */
   .grid{display:grid; grid-template-columns:repeat(20,1fr); gap:3px; margin:12px 0}
@@ -108,6 +110,7 @@
 <div id="mantraWrap" onclick="editMantra()">
   <div class="mantra-label">Mantra del trimestre</div>
   <div id="mantraDisplay"></div>
+  <div id="mantraCountdown"></div>
 </div>
 
 <!-- DEEP WORK -->
@@ -224,6 +227,16 @@ function renderMantra(){
   const el=document.getElementById('mantraDisplay');
   el.textContent = S.mantra || 'Imposta il tuo mantra';
   el.classList.toggle('placeholder', !S.mantra);
+  renderCountdown();
+}
+function renderCountdown(){
+  const el=document.getElementById('mantraCountdown');
+  const now=new Date(today()+'T12:00:00');
+  const end=new Date(now.getFullYear()+'-09-30T12:00:00');
+  const d=Math.round((end-now)/86400000);
+  if(d>0) el.innerHTML=`<b>${d}</b> giorni al 30 settembre`;
+  else if(d===0) el.innerHTML=`Ultimo giorno del trimestre 🎯`;
+  else el.innerHTML=`Trimestre concluso — scegli il prossimo mantra`;
 }
 function editMantra(){
   const v=prompt('Il tuo mantra del trimestre:', S.mantra||'');
